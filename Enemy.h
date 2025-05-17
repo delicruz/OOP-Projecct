@@ -15,9 +15,9 @@ class Enemy : public Character {
     void initializeByDifficulty();
 
     public:
-    Enemy(string name, Difficulty diff, AbilityType abil, ResistanceType res, string reward);
+    Enemy(string name, Difficulty diff, AbilityType abil, ResistanceType res, string reward);   // Helper function to set stats based on difficulty
 
-    void attack(Character& target) override;
+    void attack(Character& target) override; // Override attack method for enemy
     void defend();
 
     Difficulty getDifficulty() const;

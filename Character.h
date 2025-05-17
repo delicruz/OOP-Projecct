@@ -11,23 +11,26 @@ class Character {
     int poisonTurns;
     int poisonDamages;
     bool isStunned;
+    int health;
+    int maxHealth;
 
     public:
-    Character (string name, int hp);
+    Character (string name, int maxHp);
     virtual ~Character() = default;
 
-    virtual void attack(Character& target) = 0;
-    virtual void takeDamage(int amount);
+    virtual void attack(Character& target) = 0;  // Abstract attack method
+    virtual void takeDamage(int amount);    // Damage-taking logic
     bool isAlive() const;
 
-    void setDefenseState(bool state);
+    void setDefenseState(bool state);   // Set defense mode (reduce damage)
     bool isDefendingFunc() const;
 
-    void applyPoison(int damage, int turns);
-    void applyStun();
+    void applyPoison(int damage, int turns);    // Apply poison status
+    void applyStun();    // Apply stun status
     void ProcessStatusEffect();
 
     int getHealth() const;
+    int getMaxHealth() const;
     string getName() const;
  
 };
