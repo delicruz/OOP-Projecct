@@ -9,7 +9,7 @@ class Character {
     bool isDefending;
     bool isPoisoned;
     int poisonTurns;
-    int poisonDamages;
+    int poisonDamage;
     bool isStunned;
     int health;
     int maxHealth;
@@ -27,7 +27,7 @@ class Character {
 
     void applyPoison(int damage, int turns);    // Apply poison status
     void applyStun();    // Apply stun status
-    void ProcessStatusEffect();
+    void processStatusEffect();
 
     int getHealth() const;
     int getMaxHealth() const;

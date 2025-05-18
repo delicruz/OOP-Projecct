@@ -10,12 +10,15 @@ class Enemy : public Character {
     AbilityType ability;
     ResistanceType resistance;
     string rewardSkill;
+    int rewardExp;
+    void initializeByDifficulty();
+    void assignRewardSkill();
+    protected:
     int baseDamage;
     int maxHealth;
-    void initializeByDifficulty();
 
     public:
-    Enemy(string name, Difficulty diff, AbilityType abil, ResistanceType res, string reward);   // Helper function to set stats based on difficulty
+    Enemy(string name, Difficulty diff, AbilityType abil, ResistanceType res, string reward, int exp);   // Helper function to set stats based on difficulty
 
     void attack(Character& target) override; // Override attack method for enemy
     void defend();
@@ -25,8 +28,9 @@ class Enemy : public Character {
     ResistanceType getResistance() const;
     string getRewardSkill() const;
 
-    int getBaseDamage();
-    int getMaxHealth();
+    int getBaseDamage() const;
+    int getMaxHealth() const;
+    int getRewardExp() const;
 };
 
 #endif
