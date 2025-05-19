@@ -12,8 +12,8 @@ class Player : public Character {
     //Added variable js to track the player's current mana
     int mana;
     int currentMana;
-    //I changed the inventory to be a list of the Skill class, js to simplify stuff
-    vector<Skill> skills;
+    //I changed the inventory to be a list of the integers, because the skills are stored in seperate txt files and the int represents which line said skill is on
+    vector<int> skills;
     //I also added a max skills integer just to allow us to change stuff later if we wish
     int maxSkills;
 
@@ -26,8 +26,10 @@ class Player : public Character {
     void physicalAttack(Character& target);
     void magicalAttack(Character& target);
 
-    //Changed the function to use the Skills variable, js to fit in with the new inventory system
-    void addToInventory(const Skill& skill);
+    //Changed the function to use integers, js to fit in with the new inventory system
+    //Also the skillType variable is an ingeter used to identify what type of skill to give the player, as each skill type is 
+    //stored in a document of that particular skill type
+    void addToInventory(int skillType, const int& skill);
     void manageEquippedSkills();
 
     int getLevel() const;

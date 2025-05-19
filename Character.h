@@ -8,12 +8,12 @@ class Character {
     string name;
     //Added an integer to track the characters current health, I saw you had hp in both enemy and player classes so I added it here for simplicity
     int maxHealth;
-    int currentHealth;
-    
+    int health;
+
     bool isDefending;
     bool isPoisoned;
     int poisonTurns;
-    int poisonDamages;
+    int poisonDamage;
     bool isStunned;
 
     public:
@@ -29,9 +29,10 @@ class Character {
 
     void applyPoison(int damage, int turns);
     void applyStun();
-    void ProcessStatusEffect();
+    void processStatusEffect();
 
     int getHealth() const;
+    int getMaxHealth() const;
     string getName() const;
  
 };

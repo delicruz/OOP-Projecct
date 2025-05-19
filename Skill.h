@@ -5,6 +5,7 @@
 #include <random>
 #include <iostream>
 #include "Character.h"
+#include <cmath>
 using namespace std;
 
 class Skill
@@ -12,15 +13,17 @@ class Skill
     protected:
     string skillName;
     int skillDamage;
-    float damageRandomMultiplier;
+    float minDmgMulti;
+    float maxDmgMulti;
 
     public:
-    Skill(string name, int dmg, float multiplier);
+    Skill(string name, int dmg, float min, float max);
 
-    void Attack(Character toAttack);
+    virtual void Attack(Character& target);
+    int getRandDamage() const;
 
     string getName() const;
-    int getDamage() const;
+    int getBaseDamage() const;
 };
 
 #endif
