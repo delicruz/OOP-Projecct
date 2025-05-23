@@ -1,5 +1,5 @@
-#ifndef SKILL_ENUMS_H
-#define SKILL_ENUMS_H
+#ifndef SKILL_H
+#define SKILL_H
 using namespace std;
 #include <string>
 
