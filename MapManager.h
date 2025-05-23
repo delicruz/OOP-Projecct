@@ -7,14 +7,17 @@
 #include <string>
 #include <cmath>
 
+// Forward declaration
+class GameManager;
+
 using namespace std;
 
 class MapManager {
 private:
     // Grid dimensions
-    static const int mapWidth = 10;
+    static const int mapWidth = 15;
     static const int mapHeight = 10;
-    const float tileSize = 60.0f;
+    const float tileSize = 64.0f;
     
     // Grid offset
     float gridOffsetX;
@@ -27,6 +30,7 @@ private:
     sf::Texture doorTexture;
     vector<sf::Sprite> doorSprites; // Multiple doors
     vector<sf::Vector2f> doorPositions; // Door positions for interaction
+    vector<sf::Vector2f> bossDoorPositions; // Boss door positions
     
     sf::Texture playerTexture;
     sf::Sprite playerSprite;
@@ -75,6 +79,7 @@ public:
     sf::Vector2f getNearestDoorPosition() const;
     int getNearestDoorIndex() const;
     bool isPlayerNearHealOrb() const;
+    sf::Vector2f getDoorPosition(int index) const;
     void removeHealOrb();
     
     // Map management
