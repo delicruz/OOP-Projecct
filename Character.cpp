@@ -3,7 +3,7 @@
 using namespace std;
 
 Character::Character(string name, int maxHp) : name(name), maxHealth(maxHp), health(maxHp), isDefending(false), 
-    isPoisoned(false), poisonTurns(0), poisonDamage(0), isStunned(false) {}
+    isTakingDOT(false), dotTurns(0), dotDamage(0), isStunned(false) {}
 
 void Character::takeDamage(int amount) {
     if (isDefending) amount = 0;
@@ -23,10 +23,10 @@ bool Character::isDefendingFunc() const {
     return isDefending;
 }
 
-void Character::applyPoison(int damage, int turns) {
-    isPoisoned = true;
-    poisonDamage = damage;
-    poisonTurns = turns;
+void Character::applyDOT(int damage, int turns) {
+    isTakingDOT = true;
+    dotDamage = damage;
+    dotTurns = turns;
 }
 
 void Character::applyStun() {
@@ -34,11 +34,11 @@ void Character::applyStun() {
 }
 
 void Character::processStatusEffect() {
-    if (isPoisoned && poisonTurns > 0) {
-        health -= poisonDamage;
-        poisonTurns--;
-        if (poisonTurns == 0) {
-            isPoisoned = false;
+    if (isTakingDOT && dotTurns > 0) {
+        health -= dotDamage;
+        dotTurns--;
+        if (dotTurns == 0) {
+            isTakingDOT = false;
         }
     }
     if (isStunned) {

@@ -11,9 +11,10 @@ class Character {
     int health;
 
     bool isDefending;
-    bool isPoisoned;
-    int poisonTurns;
-    int poisonDamage;
+    //FTR DOT stands for Damage over time
+    bool isTakingDOT;
+    int dotTurns;
+    int dotDamage;
     bool isStunned;
 
     public:
@@ -27,7 +28,7 @@ class Character {
     void setDefenseState(bool state);
     bool isDefendingFunc() const;
 
-    void applyPoison(int damage, int turns);
+    void applyDOT(int damage, int turns);
     void applyStun();
     void processStatusEffect();
 

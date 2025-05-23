@@ -7,6 +7,6 @@ void DOTSkill::Attack(Character& target)
 {
     Skill::Attack(target);
 
-    target.applyPoison(dotDamage, dotTime);
+    target.applyDOT(dotDamage, dotTime);
 
 }

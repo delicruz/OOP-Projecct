@@ -17,7 +17,7 @@ void Boss::attack(Character& target) {
         target.takeDamage(baseDamage);
         break;
     case 1:
-        target.applyPoison(10, 3);
+        target.applyDOT(10, 3);
         break;
     case 2:
         target.applyStun();

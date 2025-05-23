@@ -9,9 +9,9 @@ using namespace std;
 class Player : public Character {
     private:
     int level;
-    //Added variable js to track the player's current mana
-    int mana;
-    int currentMana;
+    //Added variable js to track the player's current exp
+    int exp;
+    int currentExp;
     //I changed the inventory to be a list of the integers, because the skills are stored in seperate txt files and the int represents which line said skill is on
     vector<int> skills;
     //I also added a max skills integer just to allow us to change stuff later if we wish
@@ -33,7 +33,7 @@ class Player : public Character {
     void manageEquippedSkills();
 
     int getLevel() const;
-    int getMana() const;
+    int getExp() const;
     int getMaxHealth() const;
     
 
