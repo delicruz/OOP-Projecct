@@ -30,39 +30,62 @@ void MapManager::initialize() {
         std::cerr << "Failed to load some textures. Images may not display correctly." << std::endl;
     }
     
-    // Setup door sprites - create three doors positioned at the top of the grid
+    // Setup door sprites - create 4 doors positioned at the top of the grid
     doorSprites.clear();
     
     // Calculate scale based on tile size (we want doors to fit in a single tile)
     float doorScale = tileSize * 1.25 / std::max(doorTexture.getSize().x, doorTexture.getSize().y);
     
-    // Create three door sprites at different locations
+     // Door 1 at column 3
     sf::Sprite doorSprite1(doorTexture);
     doorSprite1.setScale(doorScale, doorScale);
     doorSprite1.setPosition(
-        gridOffsetX + 2 * tileSize,
+        gridOffsetX + 3 * tileSize,
         gridOffsetY + 1 * tileSize
     );
-    doorPositions.push_back(sf::Vector2f(gridOffsetX + 2 * tileSize, gridOffsetY + 1 * tileSize));
+    doorPositions.push_back(sf::Vector2f(gridOffsetX + 3 * tileSize, gridOffsetY + 1 * tileSize));
     doorSprites.push_back(doorSprite1);
-    
+
+    // Door 2 at column 6
     sf::Sprite doorSprite2(doorTexture);
     doorSprite2.setScale(doorScale, doorScale);
     doorSprite2.setPosition(
-        gridOffsetX + 4 * tileSize,
-        gridOffsetY + 1 * tileSize
-    );
-    doorPositions.push_back(sf::Vector2f(gridOffsetX + 4 * tileSize, gridOffsetY + 1 * tileSize));
-    doorSprites.push_back(doorSprite2);
-    
-    sf::Sprite doorSprite3(doorTexture);
-    doorSprite3.setScale(doorScale, doorScale);
-    doorSprite3.setPosition(
         gridOffsetX + 6 * tileSize,
         gridOffsetY + 1 * tileSize
     );
-    doorPositions.push_back(sf::Vector2f(gridOffsetX + 7 * tileSize, gridOffsetY + 1 * tileSize));
+    doorPositions.push_back(sf::Vector2f(gridOffsetX + 6 * tileSize, gridOffsetY + 1 * tileSize));
+    doorSprites.push_back(doorSprite2);
+
+    // Door 3 at column 9
+    sf::Sprite doorSprite3(doorTexture);
+    doorSprite3.setScale(doorScale, doorScale);
+    doorSprite3.setPosition(
+        gridOffsetX + 9 * tileSize,
+        gridOffsetY + 1 * tileSize
+    );
+    doorPositions.push_back(sf::Vector2f(gridOffsetX + 9 * tileSize, gridOffsetY + 1 * tileSize));
     doorSprites.push_back(doorSprite3);
+
+    // Door 4 at column 12
+    sf::Sprite doorSprite4(doorTexture);
+    doorSprite4.setScale(doorScale, doorScale);
+    doorSprite4.setPosition(
+        gridOffsetX + 12 * tileSize,
+        gridOffsetY + 1 * tileSize
+    );
+    doorPositions.push_back(sf::Vector2f(gridOffsetX + 12 * tileSize, gridOffsetY + 1 * tileSize));
+    doorSprites.push_back(doorSprite4);
+
+    // Boss door (fifth) at center column 7 on row 2
+    sf::Sprite doorSprite5(doorTexture);
+    doorSprite5.setScale(doorScale, doorScale);
+    doorSprite5.setPosition(
+        gridOffsetX + 7 * tileSize,
+        gridOffsetY + 3 * tileSize
+    );
+    doorPositions.push_back(sf::Vector2f(gridOffsetX + 7 * tileSize, gridOffsetY + 2 * tileSize));
+    doorSprites.push_back(doorSprite5);
+
     
     // Setup player sprite
     playerSprite.setTexture(playerTexture);
@@ -158,23 +181,19 @@ void MapManager::drawMap() {
         }
     }
     
-    // Draw all doors
-    for (size_t i = 0; i < doorSprites.size(); i++) {
-        // If we have a boss door (last door), make it special
-        if (i == doorSprites.size() - 1) {
-            // Check if boss is unlocked through the player level
-            if (player && player->getLevel() >= 3) {
-                // Boss door is a different color
-                doorSprites[i].setColor(sf::Color(255, 100, 100)); // Reddish tint
-            } else {
-                // Boss door is locked (gray)
-                doorSprites[i].setColor(sf::Color(100, 100, 100)); // Gray tint
-            }
-        }
-        
+ 
+    // Draw the four normal doors (indices 0–3)
+    for (size_t i = 0; i < doorSprites.size() && i < 4; ++i) {
+        doorSprites[i].setColor(sf::Color::White);
         window->draw(doorSprites[i]);
     }
-    
+
+    // Draw the boss door (index 4) only when player reaches level 3
+    if (doorSprites.size() > 4 && gameManager->getPlayer()->getLevel() >= 3) {
+        doorSprites[4].setColor(sf::Color::Red);
+        window->draw(doorSprites[4]);
+    }
+
     // Draw player sprite
     playerSprite.setPosition(playerPosition.x, playerPosition.y);
     window->draw(playerSprite);
@@ -400,6 +419,14 @@ void MapManager::removeHealOrb() {
     if (indexToRemove < healOrbPositions.size()) {
         healOrbPositions.erase(healOrbPositions.begin() + indexToRemove);
     }
+}
+
+sf::Vector2f MapManager::getDoorPosition(int index) const {
+    if (index < 0 || index >= static_cast<int>(doorPositions.size())) {
+        std::cerr << "Invalid door index: " << index << std::endl;
+        return {-1.f, -1.f};
+    }
+    return doorPositions[index];
 }
 
 void MapManager::resetMap() {
