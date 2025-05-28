@@ -28,7 +28,6 @@ class Enemy : public Character {
     void takePhysicalDamage(int amount);
     void takeMagicalDamage(int amount);
 
-
     Difficulty getDifficulty() const;
     AbilityType getAbility() const;
     ResistanceType getResistance() const;
@@ -43,7 +42,6 @@ class Enemy : public Character {
 
     void setMaxHealth(int maxHp)  { maxHealth = maxHp; }
     void setRewardSkill(const std::string& skill) { rewardSkill = skill; }
-
 
 
 };

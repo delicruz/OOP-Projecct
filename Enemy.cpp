@@ -12,6 +12,7 @@ Enemy::Enemy(string name, Difficulty diff, AbilityType abil, ResistanceType res,
     }
 
     void Enemy::initializeByDifficulty() {
+
     switch (difficulty) {
         case Difficulty::Easy:
         maxHealth = 50;
@@ -88,7 +89,6 @@ void Enemy::takeMagicalDamage(int amount) {
     cout << getName() << " takes " << amount << " damage after resistance! Health: "
               << health << "/" << maxHealth << std::endl;
 }
-
 
 
 void Enemy::attack(Character& target) {

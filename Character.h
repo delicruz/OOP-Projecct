@@ -23,6 +23,7 @@ class Character {
     virtual void attack(Character& target) = 0;
     virtual void takeDamage(int amount);
     virtual void useAbility(Character& target) = 0;
+
     bool isAlive() const;
 
     void setDefenseState(bool state);

@@ -175,7 +175,7 @@ bool BattleSystem::executeSelectedAction() {
     
     // Check if battle is over after action
     if (isBattleOver()) {
-        std::cout << "Battle is over after player action!" << endl;
+      cout << "Battle is over after player action!" << endl;
         return true;
     }
     
