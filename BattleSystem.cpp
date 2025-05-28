@@ -14,10 +14,21 @@ void BattleSystem::fight(Player& p, Enemy& e) {
 
 void BattleSystem::playerTurnPhase() {
     player->setDefenseState(false);
+    if (player->isCurrentlyStunned()) {
+        cout << player->getName() << " is stunned and skips the turn!" << endl;
+        player->clearStun();
+        return;
+    }
     player->attack(*enemy);
 }
 
 void BattleSystem::enemyTurnPhase() {
+    enemy->setDefenseState(false);
+    if (enemy->isCurrentlyStunned()) {
+        cout << enemy->getName() << " is stunned and skips the turn!" << endl;
+        enemy->clearStun();
+        return;
+    }
     enemy->useAbility(*player);
     cout << "enemy dealt damage: " << player->getHealth() << "/" << player->getMaxHealth() << endl;
 }
@@ -27,6 +38,9 @@ void BattleSystem::runTurn() {
     if (!player || !enemy) {
         return;
     }
+    // Process effects before each turn
+    player->processStatusEffect();
+    enemy->processStatusEffect();
 
     if (playerTurn) {
         playerTurnPhase();
@@ -115,45 +129,58 @@ bool BattleSystem::executeSelectedAction() {
     
     // Execute different actions based on selection
     switch (selectedAction) {
-        case 0: // Physical Attack
+        case 0: { // Physical Attack
             cout << player->getName() << " uses Physical Attack!" << std::endl;
-            player->physicalAttack(*enemy);
+            int damage = player->getBaseDamage();
+            if (enemy->getResistance() == ResistanceType::Physical) {
+            cout << enemy->getName() << " resists physical damage!" << endl;
+             }
+            enemy->takePhysicalDamage(damage);
             cout << "Dealt damage! Enemy health: " << enemy->getHealth() << "/" 
-                      << enemy->getMaxHealth() << std::endl;
+                      << enemy->getMaxHealth() << endl;
             break;
-            
-        case 1: // Defend
-            cout << player->getName() << " defends!" << std::endl;
+        }
+        case 1: {// Defend
+            cout << player->getName() << " defends!" << endl;
             player->defend();
             break;
-            
-        case 2: // Magic Attack
+        }
+        case 2: { // Magic Attack
             cout << player->getName() << " uses Magic Attack!" << std::endl;
-            player->magicalAttack(*enemy);
+            int damage = player->getBaseDamage(); // Or getBaseMagicDamage()
+             if (enemy->getResistance() == ResistanceType::Magical) {
+            cout << enemy->getName() << " resists magical damage!" << endl;
+             }
+             enemy->takeMagicalDamage(damage);
             cout << "Dealt damage! Enemy health: " << enemy->getHealth() << "/" 
-                      << enemy->getMaxHealth() << std::endl;
+                      << enemy->getMaxHealth() << endl;
             break;
-            
-        case 3: // Use Skill
-            cout << player->getName() << " tries to use a skill!" << std::endl;
-            player->useSkill(*enemy);
+        }
+        case 3:  { // Use Skill 
+            cout << player->getName() << " tries to use a skill!" << endl;
+            SkillType equippedSkill = player->getEquippedSkill();
+            const SkillData& skillData = getSkillData(equippedSkill);
+            cout << "Equipped skill: " << skillData.name << endl;
+            player->useAbility(*enemy);
+
             cout << "Used skill! Enemy health: " << enemy->getHealth() << "/" 
-                      << enemy->getMaxHealth() << std::endl;
+                      << enemy->getMaxHealth() << endl;
             break;
+        }
             
         default:
-            cout << "Invalid action selected" << std::endl;
+            cout << "Invalid action selected" << endl;
             return false;
     }
     
     // Check if battle is over after action
     if (isBattleOver()) {
-        std::cout << "Battle is over after player action!" << std::endl;
+      cout << "Battle is over after player action!" << endl;
         return true;
     }
     
     // Switch to enemy turn - THIS IS CRITICAL
-    cout << "Switching to enemy turn" << std::endl;
+    cout << "Switching to enemy turn" << endl;
     playerTurn = false;
     runTurn();
     
@@ -165,4 +192,9 @@ void BattleSystem::reset() {
     enemy = nullptr;
     playerTurn = true;
     selectedAction = 0;
+}
+
+Enemy* BattleSystem::getEnemy() const {
+    enemy->setRewardSkill(enemy->rollRewardSkill());
+    return enemy;
 }

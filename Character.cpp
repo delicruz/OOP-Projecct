@@ -40,14 +40,26 @@ void Character::applyStun() {
 void Character::processStatusEffect() {
     if (isPoisoned && poisonTurns > 0) {
         health -= poisonDamage;
+        if (health < 0) health = 0;
         poisonTurns--;
+        cout << getName() << " takes " << poisonDamage << " poison damage! Health: " << health << "/" << maxHealth << endl;
         if (poisonTurns == 0) {
             isPoisoned = false;
+            cout << getName() << " is no longer poisoned!" << endl;
         }
     }
-    if (isStunned) {
-        isStunned = false;
-    }
+}
+
+void Character::resetStatusEffects() {
+    isPoisoned = false;
+    poisonTurns = 0;
+    poisonDamage = 0;
+    isStunned = false;
+}
+
+
+bool Character::isCurrentlyStunned() const { 
+    return isStunned; 
 }
 
 int Character::getHealth() const {

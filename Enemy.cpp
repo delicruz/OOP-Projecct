@@ -1,16 +1,18 @@
 #include "Enemy.h"
 using namespace std;
 #include <iostream>
+#include <cstdlib>
 
-Enemy::Enemy(string name, Difficulty diff, AbilityType abil, ResistanceType res, string reward, int exp) : 
-    Character(name, 0), difficulty(diff), ability(abil), resistance(res), rewardSkill(reward), rewardExp(exp) {
+
+Enemy::Enemy(string name, Difficulty diff, AbilityType abil, ResistanceType res, int exp) : 
+    Character(name, 0), difficulty(diff), ability(abil), resistance(res), rewardExp(exp) {
         initializeByDifficulty();
         health = maxHealth;
-        rewardExp = exp;
         assignAbilities();
     }
 
-void Enemy::initializeByDifficulty() {
+    void Enemy::initializeByDifficulty() {
+
     switch (difficulty) {
         case Difficulty::Easy:
         maxHealth = 50;
@@ -59,14 +61,33 @@ void Enemy::useAbility(Character& target) {
         break;
     case AbilityType::Stun:
         target.applyStun();
+        target.takeDamage(baseDamage - 10);
+        cout << "Target is stunned!" << endl;
         break;
     case AbilityType::Poison:
         target.applyPoison(5, 3);
+        cout << "Target is poisoned for 5 damage over 3 turns!" << endl;
         break;
     case AbilityType::Defend:
-        setDefenseState(true);  
+        setDefenseState(true); 
+        cout << "Enemy is defending!" << endl;
         break;
     }
+}
+
+void Enemy::takePhysicalDamage(int amount) {
+    if (resistance == ResistanceType::Physical)
+        amount /= 2;
+    Character::takeDamage(amount);
+    cout << getName() << " takes " << amount << " damage after resistance! Health: "
+              << health << "/" << maxHealth << std::endl;
+}
+void Enemy::takeMagicalDamage(int amount) {
+    if (resistance == ResistanceType::Magical)
+        amount /= 2;
+    Character::takeDamage(amount);
+    cout << getName() << " takes " << amount << " damage after resistance! Health: "
+              << health << "/" << maxHealth << std::endl;
 }
 
 
@@ -90,7 +111,7 @@ ResistanceType Enemy::getResistance() const {
     return resistance;
 }
 
-string Enemy::getRewardSkill() const {
+std::string Enemy::getRewardSkill() const {
     return rewardSkill;
 }
 
@@ -104,5 +125,27 @@ int Enemy::getMaxHealth() const {
 
 int Enemy::getRewardExp() const {
     return rewardExp;
+}
+
+string Enemy::rollRewardSkill() const {
+    static const vector<SkillType> pool = {
+        SkillType::Slash,
+        SkillType::IceSlash,
+        SkillType::PoisonDart,
+        SkillType::Heal
+    };
+    // 50% drop chance
+    if (rand() % 2 == 0) {
+        SkillType picked = pool[rand() % pool.size()];
+        // convert to string via the global helper
+        switch (picked) {
+            case SkillType::Slash:      return "Slash";
+            case SkillType::IceSlash:   return "Ice Slash";
+            case SkillType::PoisonDart: return "Poison Dart";
+            case SkillType::Heal:       return "Heal";
+            default:                    return string();
+        }
+    }
+    return string();
 }
 

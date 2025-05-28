@@ -3,6 +3,7 @@
 
 #include "Player.h"
 #include "Enemy.h"
+#include "Skill.h"
 #include <SFML/Window/Event.hpp>
 #include <vector>
 #include <string>
@@ -45,7 +46,7 @@ public:
     
     // Getters
     Player* getPlayer() const { return player; }
-    Enemy* getEnemy() const { return enemy; }
+    Enemy* getEnemy() const;
     const vector<string>& getActionNames() const { return actionNames; }
     
     // Reset battle state

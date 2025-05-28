@@ -10,8 +10,6 @@ class Player : public Character {
     private:
     int level;
     int exp;
-    int maxHealth;
-    int health;
     int baseDamage;
     static const int expToLevel = 35;  // EXP threshold
     SkillType equippedSkill;
@@ -27,24 +25,34 @@ class Player : public Character {
     void level_Up();
     void resetProgress();
     
+    void heal(int amount);
     void physicalAttack(Character& target);
     void magicalAttack(Character& target);
     void attack(Character& target) override;
     void defend();
 
 
+
+    // Inventory management
     void addToInventory(SkillType skill);
-    void manageEquippedSkills();
-    void useSkill(Character& target);
+    void equipSkill(SkillType skill);
+    SkillType getEquippedSkill() const;
+    const std::vector<SkillType>& getSkillInventory() const;
+    void useAbility(Character& target) override;
+
 
     int getLevel() const;
     int getExp() const;
     int getMaxHealth() const;
-    //int getHealth() const;
+    int getBaseDamage() const;
     
     void setInBattle(bool battleState);
-    
+ 
+    // Save/Load functionality
+    void saveToStream(ostream& out) const;
+    void loadFromStream(istream& in);
 
+    
 };
 
 #endif

@@ -1,9 +1,20 @@
 #include "GameManager.h"
+
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
 
+#include "Skill.h"  // for SkillType
+
 using namespace std;
+
+static SkillType stringToSkillType(const std::string& s) {
+  if (s == "Slash") return SkillType::Slash;
+  if (s == "Ice Slash") return SkillType::IceSlash;
+  if (s == "Poison Dart") return SkillType::PoisonDart;
+  if (s == "Heal") return SkillType::Heal;
+  return SkillType::None;
+}
 
 GameManager::GameManager()
     : window(sf::VideoMode(1280, 720), "Turn-Based Strategy Game"),
@@ -19,7 +30,7 @@ GameManager::GameManager()
   window.setFramerateLimit(60);
 
   // Set up menu options
-  menuOptions = {"Play Game", "Exit"};
+  menuOptions = {"Play Game", "Save Game", "Load Game", "Exit"};
 
   // Load resources
   loadResources();
@@ -30,39 +41,36 @@ GameManager::GameManager()
   // Create and initialize map manager
   mapManager = new MapManager(this, &window, &font);
   mapManager->initialize();
+
+  dungeon.resetDungeon(mapManager->getDoorPositions());
 }
 
 GameManager::~GameManager() {
   // Clean up allocated objects
   delete mapManager;
   delete player;
-
-  if (currentEnemy) {
-    delete currentEnemy;
-    currentEnemy = nullptr;
-  }
 }
 
 void GameManager::loadResources() {
   if (!font.loadFromFile(
           "/home/nguyenvu343/sfml/Image and fonts/Roboto-Black.ttf")) {
-    cerr << "Failed to load font from backup path!" << std::endl;
+    cerr << "Failed to load font from backup path!" << endl;
     throw std::runtime_error("Font loading failed");
   }
 
   if (!playerBattleTexture.loadFromFile("/home/nguyenvu343/sfml/Image and "
                                         "fonts/0_Fallen_Angels_Idle_008.png")) {
-    cerr << "Failed to load player battle texture" << std::endl;
+    cerr << "Failed to load player battle texture" << endl;
   } else {
-    cout << "Successfully loaded player battle texture" << std::endl;
+    cout << "Successfully loaded player battle texture" << endl;
   }
 
   // Load enemy battle texture - using one texture for all enemies
   if (!enemyBattleTexture.loadFromFile(
           "Image and fonts/0_Dark_Oracle_Idle_012.png")) {
-    cerr << "Failed to load enemy battle texture" << std::endl;
+    cerr << "Failed to load enemy battle texture" << endl;
   } else {
-    cout << "Successfully loaded enemy battle texture" << std::endl;
+    cout << "Successfully loaded enemy battle texture" << endl;
   }
 }
 
@@ -93,10 +101,17 @@ void GameManager::processEvents() {
           handleMainMenuInput(event);
           break;
 
+        case GameState::SaveMenu:
+          handleSaveSlotMenuInput(event);
+          break;
+
+        case GameState::LoadMenu:
+          handleLoadSlotMenuInput(event);
+          break;
+
         case GameState::HubWorld:
           handleHubWorldInput(event);
           break;
-
         case GameState::BeforeFight:
           handleBeforeFightInput(event);
           break;
@@ -112,6 +127,17 @@ void GameManager::processEvents() {
         default:
           break;
       }
+    }
+
+    if (currentState == GameState::EndGame &&
+        event.type == sf::Event::KeyPressed) {
+      startTransition(
+          GameState::MainMenu);  // Go back to main menu on any key press
+    }
+
+    if (currentState == GameState::PopupResult &&
+        event.type == sf::Event::KeyPressed) {
+      startTransition(GameState::HubWorld);
     }
   }
 
@@ -137,21 +163,27 @@ void GameManager::handleMainMenuInput(const sf::Event& event) {
   if (event.key.code == sf::Keyboard::Up) {
     if (selectedMenuOption > 0) {
       selectedMenuOption--;
-      cout << "Selected: " << menuOptions[selectedMenuOption] << std::endl;
+      cout << "Selected: " << menuOptions[selectedMenuOption] << endl;
     }
   } else if (event.key.code == sf::Keyboard::Down) {
     if (selectedMenuOption < static_cast<int>(menuOptions.size() - 1)) {
       selectedMenuOption++;
-      cout << "Selected: " << menuOptions[selectedMenuOption] << std::endl;
+      cout << "Selected: " << menuOptions[selectedMenuOption] << endl;
     }
   } else if (event.key.code == sf::Keyboard::Return) {
     if (selectedMenuOption == 0) {
       // Play Game
-      cout << "Play selected!" << std::endl;
+      cout << "Play selected!" << endl;
       startTransition(GameState::HubWorld);
-    } else {
-      // Exit
-      cout << "Exit selected!" << std::endl;
+    } else if (selectedMenuOption == 1) {
+      currentState = GameState::SaveMenu;
+      selectedSlotOption = 0;
+    } else if (selectedMenuOption == 2) {
+      currentState = GameState::LoadMenu;
+      selectedSlotOption = 0;
+    } else if (selectedMenuOption == 3) {
+      // Exit Game
+      cout << "Exiting game..." << endl;
       window.close();
     }
   }
@@ -159,27 +191,28 @@ void GameManager::handleMainMenuInput(const sf::Event& event) {
 
 void GameManager::handleHubWorldInput(const sf::Event& event) {
   if (event.key.code == sf::Keyboard::Escape) {
-    cout << "Returning to main menu..." << std::endl;
+    cout << "Returning to main menu..." << endl;
     startTransition(GameState::MainMenu);
   } else if (event.key.code == sf::Keyboard::I) {
-    cout << "Opening inventory..." << std::endl;
+    cout << "Opening inventory..." << endl;
     startTransition(GameState::Inventory);
   } else if (event.key.code == sf::Keyboard::Space) {
     // Check if player is near a door
     if (mapManager->isPlayerNearDoor()) {
-      std::cout << "Entering gate..." << std::endl;
-      createEnemyForDoor(currentDoorIndex);
+      cout << "Entering gate..." << endl;
+      currentDoorIndex = mapManager->getNearestDoorIndex();
+      currentEnemy = dungeon.getEnemyAt(currentDoorIndex);
       startTransition(GameState::BeforeFight);
     }
     // Check if player is near a heal orb
     else if (mapManager->isPlayerNearHealOrb()) {
-      cout << "Found a healing orb!" << std::endl;
+      cout << "Found a healing orb!" << endl;
 
       // Heal the player
       int healAmount =
           player->getMaxHealth() / 4;   // Heal for 25% of max health
       player->takeDamage(-healAmount);  // Negative damage for healing
-      std::cout << "Healed for " << healAmount << " health!" << std::endl;
+      cout << "Healed for " << healAmount << " health!" << endl;
       if (player->getHealth() > player->getMaxHealth()) {
         player->setHealth(player->getMaxHealth());  // Cap at max health
       }
@@ -190,33 +223,75 @@ void GameManager::handleHubWorldInput(const sf::Event& event) {
   }
 }
 
+void GameManager::handleInventoryInput(const sf::Event& event) {
+  auto& inv = player->getSkillInventory();
+  int count = static_cast<int>(inv.size());
+  if (event.key.code == sf::Keyboard::Escape ||
+      event.key.code == sf::Keyboard::I) {
+    // close inventory
+    startTransition(GameState::HubWorld);
+  } else if (count > 0) {
+    if (event.key.code == sf::Keyboard::Up) {
+      inventorySelectionIndex = (inventorySelectionIndex - 1 + count) % count;
+    } else if (event.key.code == sf::Keyboard::Down) {
+      inventorySelectionIndex = (inventorySelectionIndex + 1) % count;
+    } else if (event.key.code == sf::Keyboard::Return) {
+      // equip the selected skill
+      SkillType toEquip = inv[inventorySelectionIndex];
+      player->equipSkill(toEquip);
+    }
+  }
+}
+
 void GameManager::handleBeforeFightInput(const sf::Event& event) {
   // In the demo version, any key press returns to hub world
   if (event.key.code == sf::Keyboard::F) {
     startBattle(currentDoorIndex);
     startTransition(GameState::Battle);
-    cout << "Starting battle..." << std::endl;
+    cout << "Starting battle..." << endl;
     // Reset the selected battle action
     selectedBattleAction = 0;
     startBattle(currentDoorIndex);
 
     // Print enemy stats for debugging
     cout << "Enemy HP: " << currentEnemy->getHealth() << "/"
-              << currentEnemy->getMaxHealth() << std::endl;
+         << currentEnemy->getMaxHealth() << endl;
     cout << "Enemy Damage: " << currentEnemy->getBaseDamage() << std::endl;
 
-  } else if (event.key.code == sf::Keyboard::E ||
+  } else if (event.key.code == sf::Keyboard::R ||
              event.key.code == sf::Keyboard::Escape) {
-    cout << "Retreating from battle..." << std::endl;
+    cout << "Retreating from battle..." << endl;
     startTransition(GameState::HubWorld);
   }
 }
 
-void GameManager::handleInventoryInput(const sf::Event& event) {
-  if (event.key.code == sf::Keyboard::Escape ||
-      event.key.code == sf::Keyboard::I) {
-    cout << "Closing inventory..." << std::endl;
-    startTransition(GameState::HubWorld);
+void GameManager::handleSaveSlotMenuInput(const sf::Event& event) {
+  if (event.key.code == sf::Keyboard::Up)
+    selectedSlotOption = (selectedSlotOption + 2) % 3;
+  else if (event.key.code == sf::Keyboard::Down)
+    selectedSlotOption = (selectedSlotOption + 1) % 3;
+  else if (event.key.code == sf::Keyboard::Escape)
+    currentState = GameState::MainMenu;
+  else if (event.key.code == sf::Keyboard::Enter) {
+    saveGame(selectedSlotOption + 1);
+    currentState = GameState::MainMenu;
+  }
+}
+
+void GameManager::handleLoadSlotMenuInput(const sf::Event& event) {
+  auto slots = getExistingSaves();
+  if (event.key.code == sf::Keyboard::Up)
+    selectedSlotOption = (selectedSlotOption + 2) % 3;
+  else if (event.key.code == sf::Keyboard::Down)
+    selectedSlotOption = (selectedSlotOption + 1) % 3;
+  else if (event.key.code == sf::Keyboard::Escape)
+    currentState = GameState::MainMenu;
+  else if (event.key.code == sf::Keyboard::Enter) {
+    int slot = selectedSlotOption + 1;
+    if (std::find(slots.begin(), slots.end(), slot) != slots.end()) {
+      loadGame(slot);
+      currentState = GameState::MainMenu;  // Or to HubWorld, if you prefer!
+    }
   }
 }
 
@@ -227,42 +302,79 @@ void GameManager::update(float deltaTime) {
     if (battleSystem.isBattleOver()) {
       if (battleSystem.isPlayerVictorious()) {
         // Player won the battle
-        cout << "Enemy defeated!" << std::endl;
+        cout << "Enemy defeated!" << endl;
 
         // Award experience
-        Enemy* enemy = battleSystem.getEnemy();
+        auto enemy = currentEnemy;
+        string skillName = "";
         if (enemy) {
           int expGained = enemy->getRewardExp();
           player->gainExp(expGained);
-          cout << "Gained " << expGained << " experience points!"
-                    << std::endl;
+          cout << "Gained " << expGained << " experience points!" << endl;
 
           // Check for level up
           player->checkLevelUp();
+
+          skillName = enemy->rollRewardSkill();
+          cout << "Skill string from enemy: " << skillName << endl;
+          if (!skillName.empty() && skillName != "None") {
+            SkillType type = stringToSkillType(skillName);
+            cout << "[DEBUG] SkillType enum value: " << static_cast<int>(type)
+                 << endl;
+            player->addToInventory(type);
+            cout << "You learned a new skill: " << skillName << "!" << endl;
+          }
+        }
+
+        // Set battle result variables for popup
+        lastBattleWon = true;
+        lastBattleExp = enemy->getRewardExp();
+        lastBattleSkill = skillName;
+
+        std::cout << "[DEBUG] isFinalBossRoom = " << dungeon.getBossDoorIndex()
+                  << std::endl;
+        if (currentDoorIndex == dungeon.getBossDoorIndex()) {
+          endBattle(true);
+          startTransition(GameState::EndGame);  // <--- TRIGGER END SCREEN!
+          return;
         }
 
         // End battle with victory and return to hub world
         endBattle(true);
-        startTransition(GameState::HubWorld);
+        startTransition(GameState::PopupResult);
         return;
       } else {
         // Player was defeated
-        cout << "Player defeated!" << std::endl;
+        cout << "Player defeated!" << endl;
 
         // Restore player's health
         player->takeDamage(-player->getMaxHealth());  // Full heal
+        if (currentEnemy) {
+          currentEnemy->setHealth(currentEnemy->getMaxHealth());
+        }
 
-        // End battle and return to hub world
-        endBattle(false);
-        startTransition(GameState::HubWorld);
+        if (currentDoorIndex == dungeon.getBossDoorIndex()) {
+          if (auto bossPtr = dynamic_pointer_cast<Boss>(currentEnemy)) {
+            bossPtr->setHealth(bossPtr->getMaxHealth());
+            cout << "You have been defeated by the final boss!" << std::endl;
+          }
+        }
+
+        // Set battle result variables for popup
+        lastBattleWon = false;
+        lastBattleExp = 0;
+        lastBattleSkill = "";
+
+        // Go to popup
+        startTransition(GameState::PopupResult);
         return;
       }
     }
+  }
 
-    // Run the battle system turn if it's not the player's turn
-    if (!battleSystem.isPlayerTurn()) {
-      battleSystem.runTurn();
-    }
+  // Run the battle system turn if it's not the player's turn
+  if (!battleSystem.isPlayerTurn()) {
+    battleSystem.runTurn();
   }
 }
 
@@ -284,6 +396,14 @@ void GameManager::render() {
       drawMainMenu();
       break;
 
+    case GameState::SaveMenu:
+      drawSaveSlotMenu();  // Draw the save slot menu
+      break;
+
+    case GameState::LoadMenu:
+      drawLoadSlotMenu();  // Draw the load slot menu
+      break;
+
     case GameState::HubWorld:
       mapManager->drawMap();                // Draw the hub world
       mapManager->drawInteractionPrompt();  // Draw interaction prompts
@@ -294,52 +414,22 @@ void GameManager::render() {
       break;
 
     case GameState::Inventory:
-      drawInventoryScreen();
+      drawInventoryScreen();  // Draw the inventory screen
       break;
 
     case GameState::Battle:
       drawBattleScreen();  // Draw the battle screen
       break;
+
+    case GameState::PopupResult:
+      drawBattleResultPopup();  // Draw the battle result popup
+      break;
+
+    case GameState::EndGame:
+      drawEndScreen();  // Draw the end game screen
     default:
       break;
   }
-
-  // Display the state at the bottom of the screen for debugging
-  sf::Text stateText;
-  stateText.setFont(font);
-  stateText.setCharacterSize(14);
-  stateText.setFillColor(sf::Color::Yellow);
-
-  std::string stateName;
-  switch (currentState) {
-    case GameState::MainMenu:
-      stateName = "MAIN MENU";
-      break;
-    case GameState::HubWorld:
-      stateName = "HUB WORLD";
-      break;
-    case GameState::BeforeFight:
-      stateName = "BEFORE FIGHT";
-      break;
-    case GameState::Battle:
-      stateName = "BATTLE";
-      break;
-    case GameState::Inventory:
-      stateName = "INVENTORY";
-      break;
-    case GameState::GameOver:
-      stateName = "GAME OVER";
-      break;
-    default:
-      stateName = "UNKNOWN";
-      break;
-  }
-
-  stateText.setString("CURRENT STATE: " + stateName);
-  stateText.setPosition(
-      window.getSize().x - stateText.getGlobalBounds().width - 10,
-      window.getSize().y - 20);
-  window.draw(stateText);
 
   window.display();
 }
@@ -353,26 +443,52 @@ void GameManager::drawMainMenu() {
       (window.getSize().x - titleText.getGlobalBounds().width) / 2, 100);
   window.draw(titleText);
 
-  // Menu option: Play Game
-  sf::Text playText(menuOptions[0], font, 30);
-  playText.setFillColor(selectedMenuOption == 0 ? sf::Color(255, 165, 0)
+  // Menu option: New Game
+  sf::Text newGameText(menuOptions[0], font, 30);
+  newGameText.setFillColor(selectedMenuOption == 0 ? sf::Color(255, 165, 0)
+                                                   : sf::Color::White);
+  newGameText.setPosition(
+      (window.getSize().x - newGameText.getGlobalBounds().width) / 2, 300);
+
+  // Menu option: Save Game
+  sf::Text saveText(menuOptions[1], font, 30);
+  saveText.setFillColor(selectedMenuOption == 1 ? sf::Color(255, 165, 0)
                                                 : sf::Color::White);
-  playText.setPosition(
-      (window.getSize().x - playText.getGlobalBounds().width) / 2, 300);
+  saveText.setPosition(
+      (window.getSize().x - saveText.getGlobalBounds().width) / 2, 360);
+
+  // Menu option: Load Game
+  sf::Text loadText(menuOptions[2], font, 30);
+  loadText.setFillColor(selectedMenuOption == 2 ? sf::Color(255, 165, 0)
+                                                : sf::Color::White);
+  loadText.setPosition(
+      (window.getSize().x - loadText.getGlobalBounds().width) / 2, 420);
 
   // Menu option: Exit
-  sf::Text exitText(menuOptions[1], font, 30);
-  exitText.setFillColor(selectedMenuOption == 1 ? sf::Color(255, 165, 0)
+  sf::Text exitText(menuOptions[3], font, 30);
+  exitText.setFillColor(selectedMenuOption == 3 ? sf::Color(255, 165, 0)
                                                 : sf::Color::White);
   exitText.setPosition(
-      (window.getSize().x - exitText.getGlobalBounds().width) / 2, 380);
+      (window.getSize().x - exitText.getGlobalBounds().width) / 2, 480);
 
   // Button backgrounds
-  sf::RectangleShape playBg(
-      sf::Vector2f(playText.getGlobalBounds().width + 40, 50));
-  playBg.setFillColor(sf::Color(70, 70, 70, 200));
-  playBg.setPosition(playText.getPosition().x - 20,
-                     playText.getPosition().y - 10);
+  sf::RectangleShape newGameBg(
+      sf::Vector2f(newGameText.getGlobalBounds().width + 40, 50));
+  newGameBg.setFillColor(sf::Color(70, 70, 70, 200));
+  newGameBg.setPosition(newGameText.getPosition().x - 20,
+                        newGameText.getPosition().y - 10);
+
+  sf::RectangleShape saveBg(
+      sf::Vector2f(saveText.getGlobalBounds().width + 40, 50));
+  saveBg.setFillColor(sf::Color(70, 70, 70, 200));
+  saveBg.setPosition(saveText.getPosition().x - 20,
+                     saveText.getPosition().y - 10);
+
+  sf::RectangleShape loadBg(
+      sf::Vector2f(loadText.getGlobalBounds().width + 40, 50));
+  loadBg.setFillColor(sf::Color(70, 70, 70, 200));
+  loadBg.setPosition(loadText.getPosition().x - 20,
+                     loadText.getPosition().y - 10);
 
   sf::RectangleShape exitBg(
       sf::Vector2f(exitText.getGlobalBounds().width + 40, 50));
@@ -381,11 +497,15 @@ void GameManager::drawMainMenu() {
                      exitText.getPosition().y - 10);
 
   // Draw button backgrounds first
-  window.draw(playBg);
+  window.draw(newGameBg);
+  window.draw(saveBg);
+  window.draw(loadBg);
   window.draw(exitBg);
 
   // Then draw text
-  window.draw(playText);
+  window.draw(newGameText);
+  window.draw(saveText);
+  window.draw(loadText);
   window.draw(exitText);
 
   // Navigation instructions
@@ -400,50 +520,6 @@ void GameManager::drawMainMenu() {
   enterText.setPosition(
       (window.getSize().x - enterText.getGlobalBounds().width) / 2, 630);
   window.draw(enterText);
-}
-
-void GameManager::createEnemyForDoor(int doorIndex) {
-  // Clean up previous enemy if it exists
-  if (currentEnemy != nullptr) {
-    delete currentEnemy;
-    currentEnemy = nullptr;
-  }
-
-  // Create enemy based on the door
-  std::string enemyName;
-  Difficulty diff;
-  AbilityType ability = AbilityType::NormalAttack;
-  ResistanceType resistance = ResistanceType::None;
-
-  switch (doorIndex) {
-    case 0:  // First door
-      enemyName = "Goblin";
-      diff = Difficulty::Easy;
-      break;
-    case 1:  // Second door
-      enemyName = "Goblin";
-      diff = Difficulty::Medium;
-      ability = AbilityType::Poison;
-      break;
-    case 2:  // Third door
-      enemyName = "Goblin";
-      diff = Difficulty::Hard;
-      ability = AbilityType::Stun;
-      resistance = ResistanceType::Physical;
-      break;
-    default:
-      enemyName = "Unknown Enemy";
-      diff = Difficulty::Easy;
-      ability = AbilityType::NormalAttack;
-      resistance = ResistanceType::None;
-  }
-
-  // Create the new enemy object
-  currentEnemy = new Enemy(enemyName, diff, ability, resistance, "Fire Blast",
-                           20 + (doorIndex * 10));
-
-  // Store the current door index
-  currentDoorIndex = doorIndex;
 }
 
 void GameManager::drawBeforeFightScreen() {
@@ -464,11 +540,7 @@ void GameManager::drawBeforeFightScreen() {
 
   // Create a placeholder enemy if we don't have one yet
   if (!currentEnemy) {
-    // For demo, just create a simple enemy
-    currentEnemy =
-        new Enemy("Goblin", Difficulty::Easy, AbilityType::NormalAttack,
-                  ResistanceType::None, "Fireball", 10);
-    currentDoorIndex = 0;  // Default to first door
+    return;
   }
 
   // Draw enemy stats in a box
@@ -483,7 +555,7 @@ void GameManager::drawBeforeFightScreen() {
   sf::Sprite enemySprite(enemyBattleTexture);
 
   // Scale enemy sprite to fit nicely in the box
-  float enemyScale = 100.0f / std::max(enemyBattleTexture.getSize().x,
+  float enemyScale = 100.0f / max(enemyBattleTexture.getSize().x,
                                        enemyBattleTexture.getSize().y);
   enemySprite.setScale(enemyScale, enemyScale);
 
@@ -521,10 +593,9 @@ void GameManager::drawBeforeFightScreen() {
   // Draw enemy info
   string enemyInfo = "Enemy: " + currentEnemy->getName() + "\n";
   enemyInfo += "Difficulty: " + difficultyText + "\n";
-  enemyInfo += "HP: " + std::to_string(currentEnemy->getHealth()) + "/" +
-               std::to_string(currentEnemy->getMaxHealth()) + "\n";
-  enemyInfo +=
-      "Damage: " + std::to_string(currentEnemy->getBaseDamage()) + "\n";
+  enemyInfo += "HP: " + to_string(currentEnemy->getHealth()) + "/" +
+               to_string(currentEnemy->getMaxHealth()) + "\n";
+  enemyInfo += "Damage: " + to_string(currentEnemy->getBaseDamage()) + "\n";
 
   // Convert resistance type to string
   string resistanceText;
@@ -543,7 +614,6 @@ void GameManager::drawBeforeFightScreen() {
       break;
   }
   enemyInfo += "Resistance: " + resistanceText + "\n";
-
 
   sf::Text demoInfo(enemyInfo, font, 22);
   demoInfo.setFillColor(sf::Color::White);
@@ -592,33 +662,63 @@ void GameManager::drawBeforeFightScreen() {
 }
 
 void GameManager::drawInventoryScreen() {
-  // Draw inventory screen (to be implemented)
   window.clear(sf::Color(40, 40, 60));  // Dark bluish for inventory
 
-  sf::Text inventoryTitle("INVENTORY", font, 40);
-  inventoryTitle.setFillColor(sf::Color::White);
-  inventoryTitle.setPosition(
-      (window.getSize().x - inventoryTitle.getGlobalBounds().width) / 2, 50);
-  window.draw(inventoryTitle);
+  // Title
+  sf::Text title("INVENTORY", font, 40);
+  title.setFillColor(sf::Color::White);
+  title.setPosition(50, 30);
+  window.draw(title);
 
-  // Demo inventory content
-  sf::Text demoText("DEMO VERSION", font, 30);
-  demoText.setFillColor(sf::Color::Yellow);
-  demoText.setPosition(
-      (window.getSize().x - demoText.getGlobalBounds().width) / 2, 150);
-  window.draw(demoText);
+  // Show currently equipped skill
+  sf::Text eqLabel("Equipped: ", font, 24);
+  eqLabel.setFillColor(sf::Color::White);
+  eqLabel.setPosition(50, 100);
+  window.draw(eqLabel);
 
-  sf::Text demoInfo("Inventory system will be implemented later", font, 22);
-  demoInfo.setFillColor(sf::Color::White);
-  demoInfo.setPosition(
-      (window.getSize().x - demoInfo.getGlobalBounds().width) / 2, 250);
-  window.draw(demoInfo);
+  SkillType eq = player->getEquippedSkill();
+  string eqName = (eq != SkillType::None) ? getSkillData(eq).name : "None";
+  sf::Text eqText(eqName, font, 24);
+  eqText.setFillColor(sf::Color::Yellow);
+  eqText.setPosition(200, 100);
+  window.draw(eqText);
 
-  sf::Text instructions("Press ESC or I to return to game", font, 20);
-  instructions.setFillColor(sf::Color::White);
-  instructions.setPosition(
-      (window.getSize().x - instructions.getGlobalBounds().width) / 2, 600);
-  window.draw(instructions);
+  const auto& inv = player->getSkillInventory();
+  float startY = 160.f;
+  for (int i = 0; i < (int)inv.size(); ++i) {
+    const auto& name = getSkillData(inv[i]).name;
+    sf::Text skillEntry(name, font, 28);
+    skillEntry.setPosition(80, startY + i * 40);
+
+    // Highlight: show background for selected skill
+    if (i == inventorySelectionIndex) {
+      sf::RectangleShape highlightBg(
+          sf::Vector2f(300, 36));  // Adjust size as needed
+      highlightBg.setFillColor(
+          sf::Color(255, 215, 0, 180));  // Gold, semi-transparent
+      highlightBg.setPosition(75, startY + i * 40 - 2);  // Align with text
+      window.draw(highlightBg);
+    }
+
+    skillEntry.setFillColor(sf::Color::White);
+    window.draw(skillEntry);
+
+    // Optional: draw an arrow or '>' marker next to selected
+    if (i == inventorySelectionIndex) {
+      sf::Text marker(">", font, 28);
+      marker.setFillColor(sf::Color::Yellow);
+      marker.setPosition(55, startY + i * 40);
+      window.draw(marker);
+    }
+  }
+
+  // Instructions
+  sf::Text instr("Up/Down to navigate, Press ESC or I to return", font, 18);
+  instr.setFillColor(sf::Color(200, 200, 200));
+  instr.setPosition(50, window.getSize().y - 40);
+  window.draw(instr);
+
+  window.display();
 }
 
 void GameManager::drawBattleScreen() {
@@ -661,7 +761,7 @@ void GameManager::drawBattleScreen() {
 
   // Scale player sprite to fit nicely in the box
   float playerScale = boxHeight * 0.5f /
-                      std::max(playerBattleTexture.getSize().x,
+                      max(playerBattleTexture.getSize().x,
                                playerBattleTexture.getSize().y);
   playerSprite.setScale(playerScale, playerScale);
 
@@ -677,10 +777,10 @@ void GameManager::drawBattleScreen() {
 
   // Draw player stats in the right portion of the box
   string playerStats = player->getName() + "\n";
-  playerStats += "HP: " + std::to_string(player->getHealth()) + "/" +
+  playerStats += "HP: " + to_string(player->getHealth()) + "/" +
                  std::to_string(player->getMaxHealth()) + "\n";
-  playerStats += "Exp: " + std::to_string(player->getExp()) + "/35\n";
-  playerStats += "Level: " + std::to_string(player->getLevel());
+  playerStats += "Exp: " + to_string(player->getExp()) + "/35\n";
+  playerStats += "Level: " + to_string(player->getLevel());
 
   sf::Text playerText(playerStats, font, 24);
   playerText.setFillColor(sf::Color::White);
@@ -708,7 +808,7 @@ void GameManager::drawBattleScreen() {
 
     // Scale enemy sprite to fit nicely in the box
     float enemyScale = boxHeight * 0.5f /
-                       std::max(enemyBattleTexture.getSize().x,
+                       max(enemyBattleTexture.getSize().x,
                                 enemyBattleTexture.getSize().y);
     enemySprite.setScale(enemyScale, enemyScale);
 
@@ -725,28 +825,10 @@ void GameManager::drawBattleScreen() {
 
     // Draw enemy stats
     std::string enemyStats = battleEnemy->getName() + "\n";
-    enemyStats += "HP: " + std::to_string(battleEnemy->getHealth()) + "/" +
-                  std::to_string(battleEnemy->getMaxHealth()) + "\n";
+    enemyStats += "HP: " + to_string(battleEnemy->getHealth()) + "/" +
+                  to_string(battleEnemy->getMaxHealth()) + "\n";
     enemyStats +=
-        "Damage: " + std::to_string(battleEnemy->getBaseDamage()) + "\n";
-
-    // Get difficulty as string
-    string difficultyText;
-    switch (battleEnemy->getDifficulty()) {
-      case Difficulty::Easy:
-        difficultyText = "Easy";
-        break;
-      case Difficulty::Medium:
-        difficultyText = "Medium";
-        break;
-      case Difficulty::Hard:
-        difficultyText = "Hard";
-        break;
-      default:
-        difficultyText = "Unknown";
-        break;
-    }
-    enemyStats += "Difficulty: " + difficultyText;
+        "Damage: " + to_string(battleEnemy->getBaseDamage()) + "\n";
 
     sf::Text enemyText(enemyStats, font, 24);
     enemyText.setFillColor(sf::Color::White);
@@ -772,7 +854,7 @@ void GameManager::drawBattleScreen() {
   window.draw(actionBox);
 
   // Draw action options - using action names from BattleSystem
-  const vector<std::string>& actionNames = battleSystem.getActionNames();
+  const vector<string>& actionNames = battleSystem.getActionNames();
   float actionTextX = actionBox.getPosition().x +
                       actionBoxWidth * 0.1f;  // 10% from left of action box
   float actionTextY = actionBox.getPosition().y +
@@ -780,7 +862,7 @@ void GameManager::drawBattleScreen() {
   float actionSpacing = actionBoxHeight * 0.15f;  // Spacing between actions
 
   for (int i = 0; i < static_cast<int>(actionNames.size()); i++) {
-    sf::Text actionText(std::to_string(i + 1) + ". " + actionNames[i], font,
+    sf::Text actionText(to_string(i + 1) + ". " + actionNames[i], font,
                         24);
 
     // Highlight selected action
@@ -802,7 +884,7 @@ void GameManager::drawBattleScreen() {
   }
 
   // Display turn information
-  std::string turnText = battleSystem.isPlayerTurn()
+  string turnText = battleSystem.isPlayerTurn()
                              ? "Your turn! Select an action."
                              : "Enemy's turn...";
   sf::Text turnInfo(turnText, font, 20);
@@ -821,30 +903,171 @@ void GameManager::drawBattleScreen() {
   window.draw(instructions);
 }
 
+void GameManager::drawEndScreen() {
+  window.clear(sf::Color(30, 10, 40));  // Any background color you like
+
+  sf::Text congrats("CONGRATULATIONS!", font, 60);
+  congrats.setFillColor(sf::Color::Yellow);
+  congrats.setStyle(sf::Text::Bold);
+  congrats.setPosition(
+      (window.getSize().x - congrats.getGlobalBounds().width) / 2, 200);
+  window.draw(congrats);
+
+  sf::Text info("You have defeated the boss and finished the game!", font, 32);
+  info.setFillColor(sf::Color::White);
+  info.setPosition((window.getSize().x - info.getGlobalBounds().width) / 2,
+                   320);
+  window.draw(info);
+
+  sf::Text instruction("Press any key to return to the Main Menu", font, 28);
+  instruction.setFillColor(sf::Color(200, 200, 200));
+  instruction.setPosition(
+      (window.getSize().x - instruction.getGlobalBounds().width) / 2, 500);
+  window.draw(instruction);
+
+  window.display();
+}
+
+// Draw Save Slot Selection
+void GameManager::drawSaveSlotMenu() {
+  sf::Text title("Select a Slot to Save", font, 40);
+  title.setFillColor(sf::Color::White);
+  title.setPosition((window.getSize().x - title.getGlobalBounds().width) / 2,
+                    150);
+  window.draw(title);
+
+  for (int i = 0; i < 3; ++i) {
+    string label = "Slot " + std::to_string(i + 1);
+    sf::Text slotText(label, font, 32);
+    slotText.setFillColor(selectedSlotOption == i ? sf::Color(255, 165, 0)
+                                                  : sf::Color::White);
+    slotText.setPosition(
+        (window.getSize().x - slotText.getGlobalBounds().width) / 2,
+        270 + i * 70);
+    window.draw(slotText);
+  }
+  sf::Text instr("Up/Down: Select Slot, Enter: Confirm, Esc: Back", font, 20);
+  instr.setFillColor(sf::Color(200, 200, 200));
+  instr.setPosition((window.getSize().x - instr.getGlobalBounds().width) / 2,
+                    550);
+  window.draw(instr);
+}
+
+// Draw Load Slot Selection
+void GameManager::drawLoadSlotMenu() {
+  sf::Text title("Select a Slot to Load", font, 40);
+  title.setFillColor(sf::Color::White);
+  title.setPosition((window.getSize().x - title.getGlobalBounds().width) / 2,
+                    150);
+  window.draw(title);
+
+  auto slots = getExistingSaves();  // e.g., {1,3}
+  for (int i = 0; i < 3; ++i) {
+    bool exists = find(slots.begin(), slots.end(), i + 1) != slots.end();
+    std::string label =
+        "Slot " + to_string(i + 1) + (exists ? "" : " (empty)");
+    sf::Text slotText(label, font, 32);
+    if (!exists)
+      slotText.setFillColor(sf::Color(100, 100, 100));  // grey out
+    else
+      slotText.setFillColor(selectedSlotOption == i ? sf::Color(255, 165, 0)
+                                                    : sf::Color::White);
+    slotText.setPosition(
+        (window.getSize().x - slotText.getGlobalBounds().width) / 2,
+        270 + i * 70);
+    window.draw(slotText);
+  }
+  sf::Text instr("Up/Down: Select Slot, Enter: Confirm, Esc: Back", font, 20);
+  instr.setFillColor(sf::Color(200, 200, 200));
+  instr.setPosition((window.getSize().x - instr.getGlobalBounds().width) / 2,
+                    550);
+  window.draw(instr);
+}
+
+void GameManager::drawBattleResultPopup() {
+  // Draw semi-transparent background
+  sf::RectangleShape bg(sf::Vector2f(window.getSize().x, window.getSize().y));
+  bg.setFillColor(sf::Color(0, 0, 0, 180));
+  window.draw(bg);
+
+  // Popup box
+  sf::RectangleShape box(sf::Vector2f(500, 300));
+  box.setFillColor(sf::Color(70, 70, 120, 230));
+  box.setOutlineColor(sf::Color::White);
+  box.setOutlineThickness(3);
+  box.setPosition((window.getSize().x - 500) / 2,
+                  (window.getSize().y - 300) / 2);
+  window.draw(box);
+
+  float x = box.getPosition().x + 40;
+  float y = box.getPosition().y + 30;
+
+  sf::Text title("", font, 34);
+  title.setStyle(sf::Text::Bold);
+  title.setPosition(x, y);
+
+  sf::Text content("", font, 26);
+  content.setPosition(x, y + 60);
+
+  if (lastBattleWon) {
+    title.setString("Victory!");
+    title.setFillColor(sf::Color::Yellow);
+    window.draw(title);
+
+    string txt = "Congratulations! You won the battle.\n";
+    txt += "You gained " + to_string(lastBattleExp) + " EXP.\n";
+    if (!lastBattleSkill.empty() && lastBattleSkill != "None") {
+      txt += "You learned a new skill: " + lastBattleSkill + "!";
+    }
+    content.setString(txt);
+    content.setFillColor(sf::Color::White);
+    window.draw(content);
+  } else {
+    title.setString("Defeat");
+    title.setFillColor(sf::Color::Red);
+    window.draw(title);
+
+    content.setString("You lost the battle.\nBetter luck next time!");
+    content.setFillColor(sf::Color::White);
+    window.draw(content);
+  }
+
+  // Continue hint
+  sf::Text continueText("Press any key to continue...", font, 20);
+  continueText.setFillColor(sf::Color(200, 200, 200));
+  continueText.setPosition(
+      (window.getSize().x - continueText.getGlobalBounds().width) / 2,
+      box.getPosition().y + box.getSize().y - 50);
+  window.draw(continueText);
+}
+
 void GameManager::startTransition(GameState newState) {
   cout << "Transitioning from ";
   // Print the current state
   switch (currentState) {
     case GameState::MainMenu:
-      std::cout << "MAIN_MENU";
+      cout << "MAIN_MENU";
       break;
     case GameState::HubWorld:
-      std::cout << "HUB_WORLD";
+      cout << "HUB_WORLD";
       break;
     case GameState::BeforeFight:
-      std::cout << "BEFORE_FIGHT";
+      cout << "BEFORE_FIGHT";
       break;
     case GameState::Battle:
-      std::cout << "BATTLE";
+      cout << "BATTLE";
       break;
     case GameState::Inventory:
-      std::cout << "INVENTORY";
+      cout << "INVENTORY";
       break;
     case GameState::GameOver:
-      std::cout << "GAME_OVER";
+      cout << "GAME_OVER";
+      break;
+    case GameState::EndGame:
+      cout << "END_GAME";
       break;
     default:
-      std::cout << "UNKNOWN";
+      cout << "UNKNOWN";
       break;
   }
 
@@ -870,12 +1093,16 @@ void GameManager::startTransition(GameState newState) {
     case GameState::GameOver:
       cout << "GAME_OVER";
       break;
+
+    case GameState::EndGame:
+      cout << "END_GAME";
+      break;
     default:
       cout << "UNKNOWN";
       break;
   }
 
-  cout << std::endl;
+  cout << endl;
 
   // State-specific setup when transitioning
   if (newState == GameState::HubWorld && currentState == GameState::MainMenu) {
@@ -897,8 +1124,12 @@ void GameManager::startTransition(GameState newState) {
 Player* GameManager::getPlayer() { return player; }
 
 void GameManager::startBattle(int doorIndex) {
-  cout << "Starting battle with door: " << doorIndex << std::endl;
+  cout << "Starting battle with door: " << doorIndex << endl;
 
+  //Reset all effects from the last battles
+  player->resetStatusEffects(); 
+  currentEnemy->resetStatusEffects();
+  
   // Initialize battle system with player and enemy
   battleSystem.fight(*player, *currentEnemy);
 
@@ -912,10 +1143,42 @@ void GameManager::endBattle(bool playerWon) {
 
   // Reset battle system
   battleSystem.reset();
-
-  // Clean up the enemy
-  if (currentEnemy) {
-    delete currentEnemy;
-    currentEnemy = nullptr;
+  if (!(currentDoorIndex == dungeon.getBossDoorIndex())) {
+    // regenerate just this door’s enemy
+    dungeon.regenerateEnemyAt(currentDoorIndex);
+    cout << "A new enemy now guards door " << currentDoorIndex << endl;
+  } else {
+    // boss defeated
+    dungeon.advanceRoom();
   }
+
+  currentEnemy.reset();
+}
+
+#include <fstream>
+
+void GameManager::saveGame(int slot) {
+  std::ofstream file("save" + to_string(slot) + ".txt");
+  player->saveToStream(file);
+  file << currentDoorIndex << "\n";
+  // Add more state as needed!
+}
+
+bool GameManager::loadGame(int slot) {
+  ifstream file("save" + to_string(slot) + ".txt");
+  if (!file) return false;
+  player->loadFromStream(file);
+  file >> currentDoorIndex;
+  // Add more state as needed!
+  return true;
+}
+
+// Utility: return slots that exist (1-based, up to 3 for this example)
+vector<int> GameManager::getExistingSaves() const {
+  vector<int> slots;
+  for (int i = 1; i <= 3; ++i) {
+    ifstream file("save" + to_string(i) + ".txt");
+    if (file.good()) slots.push_back(i);
+  }
+  return slots;
 }

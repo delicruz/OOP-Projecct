@@ -27,14 +27,15 @@ MapManager::~MapManager() {
 void MapManager::initialize() {
     // Load textures for game objects
     if (!loadTextures()) {
-        std::cerr << "Failed to load some textures. Images may not display correctly." << std::endl;
+        cerr << "Failed to load some textures. Images may not display correctly." << endl;
     }
     
     // Setup door sprites - create 4 doors positioned at the top of the grid
     doorSprites.clear();
     
     // Calculate scale based on tile size (we want doors to fit in a single tile)
-    float doorScale = tileSize * 1.25 / std::max(doorTexture.getSize().x, doorTexture.getSize().y);
+    float doorScale = tileSize * 1.25 / max(doorTexture.getSize().x, doorTexture.getSize().y);
+    float orbScale = tileSize / 1.5 / max(orbTexture.getSize().x, orbTexture.getSize().y);
     
      // Door 1 at column 3
     sf::Sprite doorSprite1(doorTexture);
@@ -76,7 +77,7 @@ void MapManager::initialize() {
     doorPositions.push_back(sf::Vector2f(gridOffsetX + 12 * tileSize, gridOffsetY + 1 * tileSize));
     doorSprites.push_back(doorSprite4);
 
-    // Boss door (fifth) at center column 7 on row 2
+    // Boss door (fifth) 
     sf::Sprite doorSprite5(doorTexture);
     doorSprite5.setScale(doorScale, doorScale);
     doorSprite5.setPosition(
@@ -89,20 +90,56 @@ void MapManager::initialize() {
     
     // Setup player sprite
     playerSprite.setTexture(playerTexture);
-    float playerScale = tileSize * 1.5 / std::max(playerTexture.getSize().x, playerTexture.getSize().y);
+    float playerScale = tileSize * 1.5 / max(playerTexture.getSize().x, playerTexture.getSize().y);
     playerSprite.setScale(playerScale, playerScale);
     
-    // Setup orb sprite
-    orbSprite.setTexture(orbTexture);
-    float orbScale = tileSize / 1.5 / std::max(orbTexture.getSize().x, orbTexture.getSize().y);
-    orbSprite.setScale(orbScale, orbScale);
-    orbSprite.setPosition(
+    // Setup orb sprite 1
+    sf::Sprite orbSprite1(orbTexture);
+    orbSprite1.setScale(orbScale, orbScale);
+    orbSprite1.setPosition(
         gridOffsetX + 7 * tileSize,
         gridOffsetY + 5 * tileSize
     );
     
     // Initialize heal orb positions
     healOrbPositions.push_back(sf::Vector2f(gridOffsetX + 7 * tileSize, gridOffsetY + 5 * tileSize));
+    orbSprites.push_back(orbSprite1);
+
+    // Setup orb sprite 2
+    sf::Sprite orbSprite2(orbTexture);
+    orbSprite2.setScale(orbScale, orbScale);
+    orbSprite2.setPosition(
+        gridOffsetX + 10 * tileSize,
+        gridOffsetY + 7 * tileSize
+    );
+    
+    // Initialize heal orb positions
+    healOrbPositions.push_back(sf::Vector2f(gridOffsetX + 10 * tileSize, gridOffsetY + 7 * tileSize));
+    orbSprites.push_back(orbSprite2);
+
+    // Setup orb sprite 3
+    sf::Sprite orbSprite3(orbTexture);
+    orbSprite3.setScale(orbScale, orbScale);
+    orbSprite3.setPosition(
+        gridOffsetX + 1 * tileSize, 
+        gridOffsetY + 8 * tileSize
+    );
+    
+    // Initialize heal orb positions
+    healOrbPositions.push_back(sf::Vector2f(gridOffsetX + 1 * tileSize, gridOffsetY + 8 * tileSize));
+    orbSprites.push_back(orbSprite3);
+
+    // Setup orb sprite 4
+    sf::Sprite orbSprite4(orbTexture);
+    orbSprite4.setScale(orbScale, orbScale);
+    orbSprite4.setPosition(
+        gridOffsetX + 12 * tileSize,
+        gridOffsetY + 3 * tileSize
+    );
+    
+    // Initialize heal orb positions
+    healOrbPositions.push_back(sf::Vector2f(gridOffsetX + 12 * tileSize, gridOffsetY + 3 * tileSize));
+    orbSprites.push_back(orbSprite4);
 }
 
 bool MapManager::loadTextures() {
@@ -111,29 +148,29 @@ bool MapManager::loadTextures() {
     // Try to load door texture from file
    
         if (!doorTexture.loadFromFile("/home/nguyenvu343/sfml/Image and fonts/door3.png")) {
-            cerr << "Failed to load door texture from backup path" << std::endl;
+            cerr << "Failed to load door texture from backup path" << endl;
             success = false;
         } else {
-            cout << "Successfully loaded door texture from backup path" << std::endl;
+            cout << "Successfully loaded door texture from backup path" << endl;
         }
     
     // Try to load player texture
 
         if (!playerTexture.loadFromFile("/home/nguyenvu343/sfml/Image and fonts/0_Fallen_Angels_Idle_008.png")) {
-            cerr << "Failed to load player texture from backup path" << std::endl;
+            cerr << "Failed to load player texture from backup path" << endl;
             success = false;
         } else {
-            cout << "Successfully loaded player texture from backup path" << std::endl;
+            cout << "Successfully loaded player texture from backup path" << endl;
         }
 
     
     // Try to load orb texture
   
         if (!orbTexture.loadFromFile("/home/nguyenvu343/sfml/Image and fonts/HP_Bonus_01.png")) {
-            cerr << "Failed to load orb texture from backup path" << std::endl;
+            cerr << "Failed to load orb texture from backup path" << endl;
             success = false;
         } else {
-            cout << "Successfully loaded orb texture from backup path" << std::endl;
+            cout << "Successfully loaded orb texture from backup path" << endl;
         }
     
     return success;
@@ -145,9 +182,10 @@ void MapManager::drawMap() {
     
     // Player stats with brighter background - using getters from Player class
     std::string playerStats = player->getName() + 
-                             " | Level: " + std::to_string(player->getLevel()) + 
-                             " | HP: " + std::to_string(player->getHealth()) + "/" + std::to_string(player->getMaxHealth()) + 
-                             " | Exp: " + std::to_string(player->getExp()) + "/35";
+                             " | Level: " + to_string(player->getLevel()) + 
+                             " | HP: " + to_string(player->getHealth()) + "/" + to_string(player->getMaxHealth()) + 
+                             " | Exp: " + to_string(player->getExp()) + "/35" +
+                             " | Atk: " + to_string(player->getBaseDamage());
     
     sf::Text statsText(playerStats, *font, 20);
     statsText.setFillColor(sf::Color::White);
@@ -199,9 +237,9 @@ void MapManager::drawMap() {
     window->draw(playerSprite);
     
     // Draw all healing orbs
-    for (auto& orbPos : healOrbPositions) {
-        orbSprite.setPosition(orbPos.x, orbPos.y);
-        window->draw(orbSprite);
+    for (size_t i = 0; i < orbSprites.size(); ++i) {
+        orbSprites[i].setColor(sf::Color::White);
+        window->draw(orbSprites[i]);
     }
     
     // Navigation instructions with brighter color and background
@@ -222,25 +260,6 @@ void MapManager::drawMap() {
     
     window->draw(controlsBg);
     window->draw(controlsText);
-    
-    // Calculate grid coordinates (which tile the player is on)
-    sf::Vector2i gridPos = pixelToGrid(playerPosition.x, playerPosition.y);
-    
-    // Debug info with grid position
-    sf::Text posText("Position: (" + std::to_string(static_cast<int>(playerPosition.x)) + ", " + 
-                    to_string(static_cast<int>(playerPosition.y)) + ") | Grid: (" +
-                    to_string(gridPos.x) + ", " + std::to_string(gridPos.y) + ")",
-                    *font, 14);
-    posText.setFillColor(sf::Color::White);
-    
-    // Create a background for the position text
-    sf::RectangleShape posTextBg(sf::Vector2f(posText.getGlobalBounds().width + 20, 20));
-    posTextBg.setFillColor(sf::Color(30, 30, 60, 200));
-    posTextBg.setPosition(10, window->getSize().y - 25);
-    
-    window->draw(posTextBg);
-    posText.setPosition(20, window->getSize().y - 25);
-    window->draw(posText);
 }
 
 void MapManager::drawInteractionPrompt() {
@@ -306,8 +325,8 @@ sf::Vector2i MapManager::pixelToGrid(float x, float y) const {
     int gridY = static_cast<int>((y - gridOffsetY) / tileSize);
     
     // Clamp to valid grid coordinates
-    gridX = std::max(0, std::min(gridX, mapWidth - 1));
-    gridY = std::max(0, std::min(gridY, mapHeight - 1));
+    gridX = max(0, min(gridX, mapWidth - 1));
+    gridY = max(0, min(gridY, mapHeight - 1));
     
     return sf::Vector2i(gridX, gridY);
 }
@@ -324,9 +343,9 @@ bool MapManager::isPlayerNearDoor() const {
     const float interactionDistance = tileSize * 1.5f; // Adjust based on your needs
     
     for (const auto& doorPos : doorPositions) {
-        float distance = std::sqrt(
-            std::pow(playerPosition.x - doorPos.x, 2) + 
-            std::pow(playerPosition.y - doorPos.y, 2)
+        float distance = sqrt(
+            pow(playerPosition.x - doorPos.x, 2) + 
+            pow(playerPosition.y - doorPos.y, 2)
         );
         
         if (distance < interactionDistance) {
@@ -344,7 +363,7 @@ sf::Vector2f MapManager::getNearestDoorPosition() const {
     bool foundDoor = false;
     
     for (const auto& doorPos : doorPositions) {
-        float distance = std::sqrt(
+        float distance = sqrt(
             pow(playerPosition.x - doorPos.x, 2) + 
             pow(playerPosition.y - doorPos.y, 2)
         );
@@ -365,7 +384,7 @@ int MapManager::getNearestDoorIndex() const {
     int nearestIndex = -1;
     
     for (size_t i = 0; i < doorPositions.size(); i++) {
-        float distance = std::sqrt(
+        float distance = sqrt(
             pow(playerPosition.x - doorPositions[i].x, 2) + 
             pow(playerPosition.y - doorPositions[i].y, 2)
         );
@@ -384,7 +403,7 @@ bool MapManager::isPlayerNearHealOrb() const {
     const float interactionDistance = tileSize * 1.2f;
     
     for (const auto& orbPos : healOrbPositions) {
-        float distance = std::sqrt(
+        float distance = sqrt(
             pow(playerPosition.x - orbPos.x, 2) + 
             pow(playerPosition.y - orbPos.y, 2)
         );
@@ -402,32 +421,27 @@ void MapManager::removeHealOrb() {
     const float interactionDistance = tileSize * 1.2f;
     float shortestDistance = interactionDistance;
     size_t indexToRemove = healOrbPositions.size(); // Invalid index by default
-    
+
     for (size_t i = 0; i < healOrbPositions.size(); i++) {
-        float distance = std::sqrt(
+        float distance = sqrt(
             pow(playerPosition.x - healOrbPositions[i].x, 2) + 
             pow(playerPosition.y - healOrbPositions[i].y, 2)
         );
-        
         if (distance < shortestDistance) {
             shortestDistance = distance;
             indexToRemove = i;
         }
     }
-    
+
     // Remove the orb if a valid one was found
     if (indexToRemove < healOrbPositions.size()) {
         healOrbPositions.erase(healOrbPositions.begin() + indexToRemove);
+        orbSprites.erase(orbSprites.begin() + indexToRemove);  // <--- THIS IS THE FIX
     }
 }
 
-sf::Vector2f MapManager::getDoorPosition(int index) const {
-    if (index < 0 || index >= static_cast<int>(doorPositions.size())) {
-        std::cerr << "Invalid door index: " << index << std::endl;
-        return {-1.f, -1.f};
-    }
-    return doorPositions[index];
-}
+
+
 
 void MapManager::resetMap() {
     // Reset player position to center

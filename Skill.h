@@ -1,5 +1,5 @@
-#ifndef SKILL_H
-#define SKILL_H
+#ifndef SKILL_ENUMS_H
+#define SKILL_ENUMS_H
 using namespace std;
 #include <string>
 
@@ -21,6 +21,7 @@ struct SkillData {
 };
 
 static const SkillData skillTable[] = {
+    {"None", 0, 0, "", 0, 0},
     {"Slash", 15, 20, "", 0, 0},
     {"Ice Slash", 12, 0, "Stun", 1, 0},
     {"Poison Dart", 9, 0, "Poison", 3, 0},

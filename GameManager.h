@@ -10,6 +10,11 @@
 #include "MapManager.h"
 #include "Player.h"
 #include "Enemy.h"
+#include "Dungeon.h"
+
+// Forward declaration 
+class MapManager;   
+class Player;
 
 using namespace std;
 
@@ -25,17 +30,24 @@ private:
     sf::Font font;
     sf::Texture playerBattleTexture;
     sf::Texture enemyBattleTexture;
+
+    // Battle stats
+    bool lastBattleWon = false;
+    int lastBattleExp = 0;
+    string lastBattleSkill; // Leave empty if none
     
     // Menu variables
     int selectedMenuOption;
+    int selectedSlotOption;
     vector<std::string> menuOptions;
     
     // Battle variables
     int selectedBattleAction;
     vector<std::string> battleActions;
-    Enemy* currentEnemy;
+    shared_ptr<Enemy> currentEnemy;
     BattleSystem battleSystem;
     int currentDoorIndex;
+    Dungeon dungeon;
     
     // Game systems
     MapManager* mapManager;
@@ -46,13 +58,17 @@ private:
     
     // Helper methods
     void loadResources();
+
+    // Inventory UI state
+    int inventorySelectionIndex = 0;
     
     // Input handling methods
     void handleMainMenuInput(const sf::Event& event);
     void handleHubWorldInput(const sf::Event& event);
     void handleBeforeFightInput(const sf::Event& event);
-    void handleBattleInput(const sf::Event& event);
     void handleInventoryInput(const sf::Event& event);
+    void handleSaveSlotMenuInput(const sf::Event& event);
+    void handleLoadSlotMenuInput(const sf::Event& event);
     
 public:
     GameManager();
@@ -63,12 +79,17 @@ public:
     void processEvents();
     void update(float deltaTime);
     void render();
+  
     
     // Screen drawing methods
     void drawMainMenu();
     void drawBeforeFightScreen();
     void drawBattleScreen();
     void drawInventoryScreen();
+    void drawEndScreen();
+    void drawSaveSlotMenu();
+    void drawLoadSlotMenu();
+    void drawBattleResultPopup();
     
     // Transition methods
     void startTransition(GameState newState);
@@ -80,8 +101,12 @@ public:
     sf::Font& getFont() { return font; }
     Player* getPlayer();
 
-    // for demo
-    void createEnemyForDoor(int doorIndex);
+    // Save/Load methods
+    void saveGame(int slot);
+    bool loadGame(int slot);
+    vector<int> getExistingSaves() const;
+    
+
 };
 
 #endif
